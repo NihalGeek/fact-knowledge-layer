@@ -1,0 +1,45 @@
+{
+  "note": "Small, hand-labelled benchmark over the six starter documents. Each case names two facts by (document substring, value substring) and the relationship a human analyst assigns. The labels live here in the EVAL, never in the extraction/reasoning code.",
+  "cases": [
+    {
+      "name": "Delhivery FY24 revenue — ₹8,142 Cr vs ₹81,415.38 million",
+      "entity": "Delhivery", "family": "revenue",
+      "a": {"doc": "q4-fy24", "value": "8,142"},
+      "b": {"doc": "annual-report", "value": "81,415.38"},
+      "expected": "corroborates",
+      "why": "Same FY24 revenue reported in crore vs million; equal after normalization."
+    },
+    {
+      "name": "India FY25 real GDP growth — Economic Survey 6.4% vs RBI 6.5%",
+      "entity": "India", "family": "gdp growth",
+      "a": {"doc": "economic-survey", "value": "6.4"},
+      "b": {"doc": "rbi", "value": "6.5"},
+      "expected": "contradicts",
+      "why": "Same entity/period/scope, different point estimates (vintage-flagged)."
+    },
+    {
+      "name": "India FY25 real GDP growth — IMF 6.5% vs RBI 6.5% (agree)",
+      "entity": "India", "family": "gdp growth",
+      "a": {"doc": "imf", "value": "6.5"},
+      "b": {"doc": "rbi", "value": "6.5"},
+      "expected": "corroborates",
+      "why": "Two bodies agree on 6.5% for the same year."
+    },
+    {
+      "name": "Delhivery team size — 86,184 (Dec-2021) vs 63,713 (Q4 FY24)",
+      "entity": "Delhivery", "family": "team size",
+      "a": {"doc": "prospectus", "value": "86,184"},
+      "b": {"doc": "q4-fy24", "value": "63,713"},
+      "expected": "contextually_different",
+      "why": "Different as-of dates and different footnote definitions."
+    },
+    {
+      "name": "India core inflation — IMF 3.5% vs RBI 3.5%",
+      "entity": "India", "family": "core inflation",
+      "a": {"doc": "imf", "value": "3.5"},
+      "b": {"doc": "rbi", "value": "3.5"},
+      "expected": "corroborates",
+      "why": "Same core-inflation figure across two sources."
+    }
+  ]
+}

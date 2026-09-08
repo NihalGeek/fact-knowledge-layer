@@ -1,0 +1,15 @@
+# --- Core runtime ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.11.7
+python-multipart==0.0.20      # multipart file uploads
+pymupdf==1.28.2               # page-aware PDF text + table extraction
+rapidfuzz==3.11.0             # fast lexical similarity for candidate matching
+python-dotenv==1.0.1          # load .env
+
+# --- Optional LLM layer (only imported if an API key is configured) ---
+# anthropic==0.42.0            # uncomment to enable the optional LLM extraction/explanation path
+
+# --- Dev / test ---
+pytest==8.3.4
+httpx==0.28.1                 # FastAPI TestClient transport

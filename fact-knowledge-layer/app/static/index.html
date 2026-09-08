@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fact Knowledge Layer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBFAF6; --panel:#FFFFFF; --ink:#17150F; --ink2:#4A463C; --mut:#8C8677;
+    --rule:#E8E3D6; --rule2:#D9D3C4; --accent:#1F4E46;
+    --corr:#2E6B4F; --corr-bg:#EBF1EC; --contra:#A23A2C; --contra-bg:#F7EBE8;
+    --ctx:#9A6B1E; --ctx-bg:#F5EEDE; --unc:#6E6A5E; --unc-bg:#EFEDE6;
+    --serif:'Fraunces',Georgia,'Times New Roman',serif;
+    --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+    font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;
+    font-feature-settings:"tnum" 1,"ss01" 1}
+  .mono{font-family:var(--mono);font-feature-settings:"tnum" 1}
+  .eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);font-weight:600}
+
+  /* Masthead */
+  header{background:var(--paper);border-bottom:1px solid var(--rule2);position:sticky;top:0;z-index:20}
+  .mast{max-width:1120px;margin:0 auto;padding:20px 28px 16px;display:flex;align-items:flex-end;gap:24px}
+  .brand h1{font-family:var(--serif);font-weight:600;font-size:27px;line-height:1;margin:0;letter-spacing:-.01em}
+  .brand .tagline{font-family:var(--serif);font-style:italic;color:var(--ink2);font-size:14px;margin-top:7px}
+  .stats{margin-left:auto;display:flex;gap:0}
+  .stat{padding:0 18px;text-align:right;border-left:1px solid var(--rule)}
+  .stat:first-child{border-left:none}
+  .stat b{font-family:var(--mono);font-weight:500;font-size:20px;display:block;line-height:1.1}
+  .stat span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+
+  /* Tabs */
+  nav{max-width:1120px;margin:0 auto;padding:0 28px;display:flex;gap:26px;
+    border-bottom:1px solid var(--rule);background:var(--paper)}
+  nav button{appearance:none;background:none;border:none;cursor:pointer;padding:12px 1px 11px;
+    font-family:var(--sans);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;
+    font-weight:600;color:var(--mut);border-bottom:2px solid transparent;margin-bottom:-1px}
+  nav button:hover{color:var(--ink2)}
+  nav button.on{color:var(--ink);border-bottom-color:var(--ink)}
+
+  .wrap{max-width:1120px;margin:0 auto;padding:26px 28px 80px}
+  .toolbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:22px}
+  .toolbar .sep{flex:1}
+
+  /* Filters */
+  .filters{display:flex;gap:8px}
+  .filt{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 9px;cursor:pointer;
+    border:1px solid var(--rule2);background:var(--panel);border-radius:2px;font-size:12px;
+    color:var(--mut);font-weight:500;user-select:none}
+  .filt .dot{width:7px;height:7px;border-radius:50%}
+  .filt.corr .dot{background:var(--corr)} .filt.contra .dot{background:var(--contra)}
+  .filt.ctx .dot{background:var(--ctx)} .filt.unc .dot{background:var(--unc)}
+  .filt.ncmp .dot{background:var(--rule2)}
+  .filt:not(.on){opacity:.5}
+  .filt:not(.on) .dot{background:var(--mut)!important}
+  .filt.on{color:var(--ink);border-color:var(--rule2);box-shadow:inset 0 0 0 1px var(--ink)}
+  .filt.corr.on{background:var(--corr-bg)} .filt.contra.on{background:var(--contra-bg)}
+  .filt.ctx.on{background:var(--ctx-bg)} .filt.unc.on{background:var(--unc-bg)}
+  .filt.ncmp.on{background:var(--unc-bg)}
+
+  /* dual-handle confidence range */
+  .dual{position:relative;width:150px;height:22px}
+  .dtrk{position:absolute;top:9px;left:0;right:0;height:3px;background:var(--rule);border-radius:2px}
+  .dfill{position:absolute;top:9px;height:3px;background:var(--accent);border-radius:2px}
+  .dual input[type=range]{position:absolute;top:0;left:0;width:100%;height:22px;margin:0;
+    -webkit-appearance:none;appearance:none;background:none;pointer-events:none}
+  .dual input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;
+    width:13px;height:13px;border-radius:50%;background:var(--paper);border:2px solid var(--accent);cursor:grab}
+  .dual input[type=range]::-moz-range-thumb{pointer-events:auto;width:12px;height:12px;border:none;
+    border-radius:50%;background:var(--paper);box-shadow:0 0 0 2px var(--accent);cursor:grab}
+
+  input[type=text],select{font-family:var(--sans);font-size:13px;color:var(--ink);
+    background:var(--panel);border:1px solid var(--rule2);border-radius:2px;padding:8px 11px}
+  input[type=text]{min-width:260px}
+  input[type=text]:focus,select:focus{outline:none;border-color:var(--ink)}
+  .rng{display:flex;align-items:center;gap:9px;color:var(--mut);font-size:12px}
+  input[type=range]{accent-color:var(--accent)}
+
+  /* Relationship cards */
+  .card{background:var(--panel);border:1px solid var(--rule);border-left-width:3px;
+    border-radius:2px;padding:18px 20px;margin-bottom:16px}
+  .card.rel-corroborates{border-left-color:var(--corr)}
+  .card.rel-contradicts{border-left-color:var(--contra)}
+  .card.rel-contextually_different{border-left-color:var(--ctx)}
+  .card.rel-uncertain{border-left-color:var(--unc)}
+  .card.rel-related_not_comparable{border-left-color:var(--rule2)}
+  .rhead{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .rlabel{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:600}
+  .rel-corroborates .rlabel{color:var(--corr)} .rel-contradicts .rlabel{color:var(--contra)}
+  .rel-contextually_different .rlabel{color:var(--ctx)} .rel-uncertain .rlabel{color:var(--unc)}
+  .rel-related_not_comparable .rlabel{color:var(--mut)}
+  .rtitle{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:-.01em}
+  .rconf{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--mut);font-size:11px;
+    letter-spacing:.05em;text-transform:uppercase}
+  .rconf .num{font-family:var(--mono);font-size:13px;color:var(--ink2)}
+  .meter{width:54px;height:3px;background:var(--rule);overflow:hidden}
+  .meter i{display:block;height:100%;background:var(--ink2)}
+
+  .split{display:grid;grid-template-columns:1fr 1px 1fr;gap:22px}
+  .split .vr{background:var(--rule)}
+  @media(max-width:680px){.split{grid-template-columns:1fr}.split .vr{display:none}}
+  .val{font-family:var(--mono);font-weight:500;font-size:21px;letter-spacing:-.01em}
+  .norm{color:var(--mut);font-size:12px;margin-top:3px}
+  .norm .k{color:var(--ink2)}
+  .meta{display:flex;flex-wrap:wrap;gap:12px;margin-top:11px}
+  .m{font-size:11.5px;color:var(--mut)}
+  .m b{color:var(--ink);font-weight:500}
+  .m.def{cursor:help;border-bottom:1px dotted var(--rule2)}
+  .ev{margin-top:12px;font-size:12.5px;color:var(--ink2);border-left:2px solid var(--rule2);
+    padding:2px 0 2px 12px;font-family:var(--serif);font-style:italic}
+  .ev .src{display:block;font-family:var(--mono);font-style:normal;font-size:10.5px;
+    letter-spacing:.03em;color:var(--accent);margin-top:6px;text-transform:none}
+  .why{margin-top:16px;padding-top:14px;border-top:1px solid var(--rule)}
+  .why p{margin:5px 0 0;font-size:13px;color:var(--ink)}
+  .tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+  .tag{font-size:11px;color:var(--ink2);background:var(--paper);border:1px solid var(--rule2);
+    padding:2px 8px;border-radius:2px}
+
+  /* Table */
+  .sheet{background:var(--panel);border:1px solid var(--rule);border-radius:2px}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:600;
+    text-align:left;padding:11px 14px;border-bottom:1px solid var(--rule2)}
+  td{padding:11px 14px;border-bottom:1px solid var(--rule);font-size:13px;vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  tr.click{cursor:pointer} tr.click:hover{background:var(--paper)}
+  td.n{font-family:var(--mono);white-space:nowrap}
+  .muted{color:var(--mut)} .empty{color:var(--mut);padding:44px;text-align:center;font-style:italic;font-family:var(--serif)}
+  .lede{color:var(--ink2);font-size:13.5px;max-width:660px;margin:0 0 20px;line-height:1.6}
+  .lede code{font-family:var(--mono);font-size:12px;background:var(--panel);border:1px solid var(--rule);padding:1px 5px}
+  .count{color:var(--mut);font-size:12px;margin:0 0 16px}
+
+  /* Drop zone */
+  .drop{border:1px dashed var(--rule2);background:var(--panel);border-radius:2px;padding:26px;
+    text-align:center;color:var(--mut);margin-bottom:20px}
+  .drop.hot{border-color:var(--ink);color:var(--ink)}
+  .drop b{font-family:var(--serif);color:var(--ink);font-size:16px}
+  .pick{display:inline-block;border:1px solid var(--ink);color:var(--ink);padding:6px 14px;
+    border-radius:2px;cursor:pointer;font-size:12px;font-weight:500;margin-left:4px}
+  button.rm{appearance:none;background:none;border:1px solid var(--rule2);color:var(--mut);
+    font-size:11px;padding:3px 10px;border-radius:2px;cursor:pointer;font-family:var(--sans)}
+  button.rm:hover{border-color:var(--contra);color:var(--contra);background:var(--contra-bg)}
+
+  /* Modal */
+  dialog{background:var(--panel);color:var(--ink);border:1px solid var(--rule2);border-radius:2px;
+    max-width:780px;width:92%;padding:0;box-shadow:0 24px 60px rgba(20,18,10,.22)}
+  dialog::backdrop{background:rgba(23,21,15,.42)}
+  .dh{padding:18px 22px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:12px}
+  .dh b{font-family:var(--serif);font-size:17px;font-weight:600}
+  .db{padding:20px 22px;max-height:72vh;overflow:auto}
+  .x{margin-left:auto;cursor:pointer;background:none;border:none;color:var(--mut);font-size:22px;line-height:1}
+  .db h4{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);
+    font-weight:600;margin:22px 0 10px}
+  .shot{width:100%;border:1px solid var(--rule2);border-radius:2px;background:#fff}
+
+  /* Equation (checks) */
+  .eqn{font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--ink2)}
+  .eqn b{color:var(--ink);font-weight:500}
+  .eqn .ok{color:var(--corr)} .eqn .no{color:var(--contra)}
+
+  .toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:#F6F3EC;
+    padding:11px 16px;border-radius:2px;font-size:12.5px;opacity:0;transition:opacity .25s;
+    pointer-events:none;max-width:340px}
+  .toast.show{opacity:1}
+  .spin{width:14px;height:14px;border:2px solid var(--rule2);border-top-color:var(--ink2);
+    border-radius:50%;display:inline-block;animation:sp .9s linear infinite;vertical-align:middle}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="mast">
+    <div class="brand">
+      <h1>Fact Knowledge Layer</h1>
+      <div class="tagline">extract · ground · reconcile — evidence across documents</div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+  <nav>
+    <button data-tab="relationships" class="on">Reconciliation</button>
+    <button data-tab="facts">Facts</button>
+    <button data-tab="checks">Consistency</button>
+    <button data-tab="documents">Documents</button>
+  </nav>
+</header>
+
+<div class="wrap">
+  <!-- RECONCILIATION -->
+  <section id="tab-relationships">
+    <div class="toolbar">
+      <select id="preset" title="Quick filter">
+        <option value="all">Show: all relationships</option>
+        <option value="contra">Contradictory only</option>
+        <option value="notcontra">Not contradictory</option>
+        <option value="agree">Agreements only</option>
+        <option value="uncertain">Needs review (uncertain)</option>
+      </select>
+      <div class="filters">
+        <span class="filt corr on" data-rel="corroborates"><i class="dot"></i>Corroborates</span>
+        <span class="filt contra on" data-rel="contradicts"><i class="dot"></i>Contradicts</span>
+        <span class="filt ctx on" data-rel="contextually_different"><i class="dot"></i>Contextual</span>
+        <span class="filt unc" data-rel="uncertain"><i class="dot"></i>Uncertain</span>
+        <span class="filt ncmp" data-rel="related_not_comparable"><i class="dot"></i>Related</span>
+      </div>
+      <span class="sep"></span>
+      <div class="rng">confidence
+        <div class="dual">
+          <div class="dtrk"></div><div class="dfill" id="dfill"></div>
+          <input type="range" id="cmin" min="0" max="1" step="0.05" value="0.3" autocomplete="off">
+          <input type="range" id="cmax" min="0" max="1" step="0.05" value="1" autocomplete="off">
+        </div>
+        <span id="conflabel" class="mono">0.30 – 1.00</span>
+      </div>
+    </div>
+    <div id="rels"></div>
+  </section>
+
+  <!-- FACTS -->
+  <section id="tab-facts" hidden>
+    <div class="toolbar">
+      <input type="text" id="q" placeholder="Search facts — entity or metric…">
+      <select id="fentity"><option value="">All entities</option></select>
+      <select id="ftype">
+        <option value="">All types</option><option value="monetary">Monetary</option>
+        <option value="percentage">Percentage</option><option value="count">Count</option>
+      </select>
+    </div>
+    <div class="sheet"><table>
+      <thead><tr><th>Entity</th><th>Metric</th><th>Value</th><th>Period</th><th>Scope</th>
+        <th>Source</th><th style="text-align:right">Conf.</th></tr></thead>
+      <tbody id="factrows"></tbody></table></div>
+  </section>
+
+  <!-- CHECKS -->
+  <section id="tab-checks" hidden>
+    <p class="lede">Accounting identities verified <em>within</em> a document from independently-extracted
+      figures — e.g. <code>total income = revenue + other income</code>. A mismatch flags an extraction
+      error or a real inconsistency in the filing.</p>
+    <div id="checks"></div>
+  </section>
+
+  <!-- DOCUMENTS -->
+  <section id="tab-documents" hidden>
+    <div class="drop" id="drop">
+      <b>Drop a PDF to ingest</b><label class="pick">choose file
+        <input type="file" id="file" accept="application/pdf" hidden></label>
+      <div class="muted" style="margin-top:9px;font-size:12px">Each new document is compared incrementally
+        against everything already in the knowledge layer.</div>
+    </div>
+    <div class="sheet"><table>
+      <thead><tr><th>Document</th><th>Entity</th><th>Pages</th><th>Facts</th>
+        <th>Relations</th><th>Status</th><th style="text-align:right">Time</th><th></th></tr></thead>
+      <tbody id="docrows"></tbody></table></div>
+  </section>
+</div>
+
+<dialog id="dlg"><div class="dh"><b id="dlg-t">Fact</b>
+  <button class="x" onclick="dlg.close()">×</button></div>
+  <div class="db" id="dlg-b"></div></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const dlg=$('#dlg');
+const RLABEL={corroborates:'Corroborates',contradicts:'Contradicts',
+  contextually_different:'Contextually different',uncertain:'Uncertain',
+  related_not_comparable:'Related · not comparable'};
+let activeRels=new Set(['corroborates','contradicts','contextually_different']);
+let relCache=null, confMin=0.3, confMax=1;
+let debounce;
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fmtNum(n){if(n==null)return '';const a=Math.abs(n);
+  if(a>=1e9)return (n/1e9).toFixed(2)+'B';if(a>=1e7)return (n/1e7).toFixed(2)+' Cr';
+  if(a>=1e5)return (n/1e5).toFixed(2)+' L';return n.toLocaleString();}
+function unit(f){if(f.normalized_unit==='percent')return '%';
+  return ['INR','USD','EUR','GBP'].includes(f.normalized_unit)?f.normalized_unit:'';}
+async function api(p){const r=await fetch(p);if(!r.ok)throw new Error((await r.json()).detail||r.status);return r.json();}
+
+async function loadStats(){const s=await api('/stats');
+  $('#stats').innerHTML=[['documents',s.documents],['facts',s.facts],['relationships',s.relationships]]
+    .map(([l,v])=>`<div class="stat"><b>${v.toLocaleString()}</b><span>${l}</span></div>`).join('');}
+
+// ---------- Reconciliation ----------
+function factCol(f){
+  const u=unit(f), m=[];
+  m.push(`<span class="m">period <b>${esc(f.period.label||f.period.raw||'—')}</b></span>`);
+  if(f.scope)m.push(`<span class="m">scope <b>${esc(f.scope)}</b></span>`);
+  if(f.status&&f.status!=='unknown')m.push(`<span class="m">basis <b>${esc(f.status)}</b></span>`);
+  if(f.definition)m.push(`<span class="m def" title="${esc(f.definition)}">definition ﹖</span>`);
+  m.push(`<span class="m">via <b>${esc(f.extraction_method.replace('deterministic_','').replace('_',' '))}</b></span>`);
+  return `<div>
+    <div class="val">${esc(f.raw_value)}</div>
+    <div class="norm">= <span class="k mono">${fmtNum(f.normalized_value)} ${u}</span> · ${esc(f.canonical_attribute)}</div>
+    <div class="meta">${m.join('')}</div>
+    <div class="ev">“${esc(f.evidence.text.slice(0,230))}${f.evidence.text.length>230?'…':''}”
+      <span class="src">${esc(f.source_document_name)} · p.${f.source_page}</span></div>
+  </div>`;
+}
+function relCard(item){
+  const r=item.relationship,a=item.fact_a,b=item.fact_b; if(!a||!b)return '';
+  const diffs=(r.context_differences||[]).map(d=>`<span class="tag">${esc(d)}</span>`).join('');
+  return `<article class="card rel-${r.relation}">
+    <div class="rhead">
+      <span class="rlabel">${esc(RLABEL[r.relation]||r.relation)}</span>
+      <span class="rtitle">${esc(a.canonical_entity)} · ${esc(a.canonical_attribute)}</span>
+      <span class="rconf">confidence <span class="num">${(r.confidence*100).toFixed(0)}</span>
+        <span class="meter"><i style="width:${r.confidence*100}%"></i></span></span>
+    </div>
+    <div class="split">${factCol(a)}<div class="vr"></div>${factCol(b)}</div>
+    <div class="why"><span class="eyebrow">Reasoning</span><p>${esc(r.explanation)}</p>
+      ${diffs?`<div class="tags">${diffs}</div>`:''}</div>
+  </article>`;
+}
+async function loadRels(force){
+  if(force) relCache=null;
+  if(!relCache){
+    $('#rels').innerHTML='<div class="empty"><span class="spin"></span></div>';
+    relCache=await api('/relationships?min_confidence=0&limit=5000');   // fetch once, filter locally
+  }
+  renderRels();
+}
+function renderRels(){
+  const box=$('#rels'); if(!box) return;
+  if(!relCache){box.innerHTML='';return;}
+  const shown=relCache.filter(x=>activeRels.has(x.relationship.relation)
+    && x.relationship.confidence>=confMin-1e-9 && x.relationship.confidence<=confMax+1e-9);
+  const order={contradicts:0,corroborates:1,contextually_different:2,uncertain:3,related_not_comparable:4};
+  shown.sort((x,y)=>(order[x.relationship.relation]-order[y.relationship.relation])
+    ||(y.relationship.confidence-x.relationship.confidence));
+  const counts={};
+  shown.forEach(x=>counts[x.relationship.relation]=(counts[x.relationship.relation]||0)+1);
+  const summary=Object.entries(counts).sort((a,b)=>order[a[0]]-order[b[0]])
+    .map(([k,v])=>`${v} ${RLABEL[k].toLowerCase()}`).join(' · ');
+  box.innerHTML=(shown.length
+    ?`<p class="count">${shown.length} shown &nbsp;—&nbsp; ${summary}</p>`+shown.map(relCard).join('')
+    :'<div class="empty">No relationships match these filters. Widen the confidence range, or enable more types above.</div>');
+}
+function syncChips(){ $$('.filt').forEach(c=>c.classList.toggle('on', activeRels.has(c.dataset.rel))); }
+
+// ---------- Facts ----------
+async function loadFacts(){
+  const q=$('#q').value,e=$('#fentity').value,t=$('#ftype').value;
+  let facts=q?await api('/search?q='+encodeURIComponent(q)+'&limit=300')
+    :await api(`/facts?limit=400${e?'&entity='+encodeURIComponent(e):''}${t?'&fact_type='+t:''}`);
+  if(e)facts=facts.filter(f=>f.canonical_entity.toLowerCase().includes(e.toLowerCase()));
+  if(t)facts=facts.filter(f=>f.fact_type===t);
+  $('#factrows').innerHTML=facts.slice(0,400).map(f=>`<tr class="click" data-fid="${f.fact_id}">
+    <td>${esc(f.canonical_entity)}</td><td>${esc(f.attribute).slice(0,48)}</td>
+    <td class="n"><b>${esc(f.raw_value)}</b></td><td class="n">${esc(f.period.label||'—')}</td>
+    <td>${esc(f.scope||'—')}</td>
+    <td class="muted">${esc(f.source_document_name).slice(0,22)} · p${f.source_page}</td>
+    <td class="n" style="text-align:right">${(f.extraction_confidence*100).toFixed(0)}%</td></tr>`).join('')
+    ||'<tr><td colspan=7 class="empty">No facts.</td></tr>';
+}
+async function openFact(fid){
+  const f=await api('/facts/'+fid), rels=await api('/facts/'+fid+'/relationships');
+  $('#dlg-t').textContent=f.canonical_entity+' · '+f.attribute;
+  let h=`<article class="card rel-${'x'}" style="border-left-color:var(--rule2)">${factCol(f)}</article>`;
+  h+=`<h4>Evidence on the page</h4>
+      <img class="shot" src="/facts/${fid}/evidence.png" alt="source page, evidence highlighted"
+           onerror="this.previousElementSibling.remove();this.remove()">`;
+  if(rels.length){h+=`<h4>Related across documents · ${rels.length}</h4>`+rels.map(relCard).join('');}
+  else h+=`<h4>Related across documents</h4><p class="muted">None found for this fact.</p>`;
+  $('#dlg-b').innerHTML=h; dlg.showModal();
+}
+
+// ---------- Consistency ----------
+async function loadChecks(){
+  const box=$('#checks'); box.innerHTML='<div class="empty"><span class="spin"></span></div>';
+  const cs=await api('/consistency');
+  if(!cs.length){box.innerHTML='<div class="empty">No accounting identities matched yet.</div>';return;}
+  const pass=cs.filter(c=>c.ok).length;
+  box.innerHTML=`<p class="count">${pass} of ${cs.length} identities hold</p>`+cs.map(c=>{
+    const comps=c.components.map(x=>`<b>${esc(x.raw_value)}</b> <span class="muted">(${esc(x.family)}, p${x.page})</span>`).join(' + ');
+    const rel=c.ok?'corroborates':'contradicts', mark=c.ok?'<span class="ok">= matches</span>':'<span class="no">≠ stated</span>';
+    return `<article class="card rel-${rel}">
+      <div class="rhead"><span class="rlabel">${c.ok?'Holds':'Mismatch'}</span>
+        <span class="rtitle">${esc(c.entity)} · ${esc(c.identity)}</span>
+        <span class="rconf">${esc(c.period)}${c.scope?' · '+esc(c.scope):''}</span></div>
+      <div class="eqn">${comps} = <b>${fmtNum(c.computed_value)}</b> &nbsp;${mark}&nbsp;
+        <b>${fmtNum(c.result_value)}</b> <span class="muted">(${esc(c.result_family)}, p${c.result_page})</span>
+        ${c.ok?'':`<div class="muted">Δ = ${fmtNum(c.delta)} ${esc(c.unit||'')}</div>`}</div>
+    </article>`;
+  }).join('');
+}
+
+// ---------- Documents ----------
+async function loadDocs(){
+  const docs=await api('/documents');
+  $('#docrows').innerHTML=docs.map(d=>`<tr><td>${esc(d.name)}</td>
+    <td>${esc(d.primary_entity||'—')}</td><td class="n">${d.page_count}</td><td class="n">${d.fact_count}</td>
+    <td class="n">${d.relationship_count}</td><td>${esc(d.status)}</td>
+    <td class="n muted" style="text-align:right">${(d.processing_ms/1000).toFixed(1)}s</td>
+    <td style="text-align:right"><button class="rm" data-doc="${d.document_id}" data-name="${esc(d.name)}"
+      title="Remove this document and its facts">Remove</button></td></tr>`).join('')
+    ||'<tr><td colspan=8 class="empty">No documents yet.</td></tr>';
+  const ents=await api('/entities');
+  $('#fentity').innerHTML='<option value="">All entities</option>'+
+    ents.map(e=>`<option>${esc(e.entity)}</option>`).join('');
+}
+async function upload(file){
+  if(!file)return; const fd=new FormData(); fd.append('file',file);
+  toast('Processing '+file.name+' …');
+  const r=await fetch('/documents/upload',{method:'POST',body:fd}); const j=await r.json();
+  if(!r.ok){toast('Error: '+(j.detail||'upload failed'));return;}
+  toast(j.duplicate?'Already ingested (duplicate).'
+    :`${file.name}: ${j.facts} facts, ${j.relationships} new relationships`);
+  await Promise.all([loadStats(),loadDocs()]); loadRels(true);
+}
+
+// ---------- wiring ----------
+$$('nav button').forEach(b=>b.onclick=()=>{
+  $$('nav button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  ['relationships','facts','checks','documents'].forEach(t=>$('#tab-'+t).hidden=(t!==b.dataset.tab));
+  ({relationships:loadRels,facts:loadFacts,checks:loadChecks,documents:loadDocs})[b.dataset.tab]();
+});
+$$('.filt').forEach(c=>c.onclick=()=>{const r=c.dataset.rel;
+  if(activeRels.has(r)){activeRels.delete(r);} else {activeRels.add(r);}
+  c.classList.toggle('on', activeRels.has(r)); renderRels();});
+$('#preset').onchange=e=>{
+  const map={all:['corroborates','contradicts','contextually_different','uncertain','related_not_comparable'],
+    contra:['contradicts'],
+    notcontra:['corroborates','contextually_different','uncertain','related_not_comparable'],
+    agree:['corroborates'], uncertain:['uncertain']};
+  activeRels=new Set(map[e.target.value]||map.all); syncChips(); renderRels();
+};
+const cmin=$('#cmin'),cmax=$('#cmax'),dfill=$('#dfill'),conflabel=$('#conflabel');
+function updateDual(){
+  let lo=+cmin.value, hi=+cmax.value;
+  if(lo>hi){ if(document.activeElement===cmin){cmax.value=lo;hi=lo;} else {cmin.value=hi;lo=hi;} }
+  confMin=lo; confMax=hi;
+  dfill.style.left=(lo*100)+'%'; dfill.style.width=((hi-lo)*100)+'%';
+  cmin.style.zIndex = lo>0.75 ? 5 : 3;                 // keep both thumbs grabbable near the top
+  conflabel.textContent=lo.toFixed(2)+' – '+hi.toFixed(2);
+  renderRels();
+}
+cmin.oninput=updateDual; cmax.oninput=updateDual;
+$('#q').oninput=()=>{clearTimeout(debounce);debounce=setTimeout(loadFacts,240);};
+$('#fentity').onchange=loadFacts; $('#ftype').onchange=loadFacts;
+$('#file').onchange=e=>upload(e.target.files[0]);
+async function removeDoc(id,name){
+  if(!confirm(`Remove "${name}"?\n\nIts facts and every relationship involving them will be deleted from the knowledge layer.`))return;
+  const r=await fetch('/documents/'+id,{method:'DELETE'}); const j=await r.json();
+  if(!r.ok){toast('Error: '+(j.detail||'delete failed'));return;}
+  toast(`Removed ${name} — ${j.facts_removed} facts, ${j.relationships_removed} relationships deleted`);
+  await Promise.all([loadStats(),loadDocs()]); loadRels(true);
+}
+document.body.addEventListener('click',e=>{
+  const rm=e.target.closest('button.rm');
+  if(rm){e.stopPropagation();removeDoc(rm.dataset.doc,rm.dataset.name);return;}
+  const tr=e.target.closest('tr[data-fid]');if(tr)openFact(tr.dataset.fid);});
+const drop=$('#drop');
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hot');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hot');}));
+drop.addEventListener('drop',e=>upload(e.dataTransfer.files[0]));
+
+cmin.value=0.3; cmax.value=1;                 // force a known default range (ignore any restored value)
+updateDual(); loadStats(); loadRels();
+</script>
+</body>
+</html>
